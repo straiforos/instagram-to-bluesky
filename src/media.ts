@@ -90,7 +90,7 @@ export async function processMedia(media: any, archiveFolder: string): Promise<M
 
       if (bufferResized.length > API_LIMIT_IMAGE_UPLOAD_SIZE) {
         logger.error({
-          message: `Resized image size (${byteSize(bufferResized.length)}) larger than image upload limit (${byteSize(API_LIMIT_IMAGE_UPLOAD_SIZE)})`
+          message: `Resized image size (${byteSize(bufferResized.length)}) is larger than image upload limit (${byteSize(API_LIMIT_IMAGE_UPLOAD_SIZE)})`
         });
         return { mediaText: '', mimeType: null, imageBuffer: null };
       }
