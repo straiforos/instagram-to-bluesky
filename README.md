@@ -94,6 +94,9 @@ This is recommended before running an actual import.
 - Rate limiting enforced between posts
 - Stories, and likes can not be imported.
 
+### Notes
+The Bluesky has an upload limit of 1mb for image files. The script will check images that are over 1mb and if they are will scale the longest edge of the image down to 1920px. Which in most cases will decrease the image filesize below 1mb. In cases where its still too big, the image will be skipped. 
+
 ## License
 
 "Instagram To Bluesky" is published under the MIT license.
