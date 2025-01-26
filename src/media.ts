@@ -56,6 +56,62 @@ export async function processMedia(media: any, archiveFolder: string): Promise<M
     return { mediaText: '', mimeType: null, mediaBuffer: null, isVideo: false };
   }
 
+  /** start spadged's work */
+  if (imageBuffer.length > API_LIMIT_IMAGE_UPLOAD_SIZE && mimeType != '') {
+    logger.warn({
+      message: `Image size (${byteSize(imageBuffer.length)}) is larger than upload limit (${byteSize(API_LIMIT_IMAGE_UPLOAD_SIZE)}). Will attempt to resize buffer ${mediaFilename}` 
+    });
+
+    const sharpImage = sharp(imageBuffer);
+
+    const imageMeta = await sharpImage.metadata();
+
+    const IMAGE_LENGTH_LIMIT = 1920;
+
+    if (imageMeta.width && imageMeta.height) {
+      let width: number | undefined = (imageMeta.width > imageMeta.height) ? IMAGE_LENGTH_LIMIT : undefined;
+      const height: number | undefined = (imageMeta.height > imageMeta.width) ? IMAGE_LENGTH_LIMIT : undefined;
+
+      // both will be undefined if the image is square, so set the width.
+      if(!width && !height)
+      {
+        width = IMAGE_LENGTH_LIMIT;
+      }
+
+      const bufferResized = await sharp(imageBuffer)
+        .resize({ width: width, height: height, withoutEnlargement: true })
+        .toBuffer();
+      
+      const metaResized = await sharp(bufferResized).metadata();
+
+      logger.info({
+        message: `before: w${imageMeta.width} h${imageMeta.height} | after: w${metaResized.width} h${metaResized.height}`
+      });
+
+      if (bufferResized.length > API_LIMIT_IMAGE_UPLOAD_SIZE) {
+        logger.error({
+          message: `Resized image size (${byteSize(bufferResized.length)}) larger than image upload limit (${byteSize(API_LIMIT_IMAGE_UPLOAD_SIZE)})`
+        });
+        return { mediaText: '', mimeType: null, imageBuffer: null };
+      }
+      else {
+        logger.info({
+          message: `Image successfully resized (${byteSize(bufferResized.length)}) to be less than upload limit (${byteSize(API_LIMIT_IMAGE_UPLOAD_SIZE)}). This does not change the original image on disk.`
+        });
+
+        imageBuffer = bufferResized;
+      }
+    }
+    else {
+      logger.error({
+        message: `Image width or height meta data is missing, image buffer cannot be resized. Image size (${byteSize(imageBuffer.length)} is larger than upload limit (${byteSize(API_LIMIT_IMAGE_UPLOAD_SIZE)}))`
+      });
+
+      return { mediaText: '', mimeType: null, imageBuffer: null };
+    }
+
+  /** end spadged's work */
+
   let mediaText = media.title ?? '';
   if (media.media_metadata?.photo_metadata?.exif_data?.length > 0) {
     const location = media.media_metadata.photo_metadata.exif_data[0];
