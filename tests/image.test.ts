@@ -11,12 +11,14 @@ jest.mock('../src/logger', () => ({
   }
 }));
 
+// Create a partial mock of Sharp
 jest.mock('sharp', () => {
-  return jest.fn().mockImplementation(() => ({
+  const sharpInstance = {
     metadata: jest.fn().mockResolvedValue({ width: 1920, height: 1080 }),
     resize: jest.fn().mockReturnThis(),
     toBuffer: jest.fn().mockResolvedValue(Buffer.alloc(500000))
-  }));
+  };
+  return jest.fn().mockImplementation(() => sharpInstance);
 });
 
 describe('Image Utils', () => {
@@ -91,11 +93,13 @@ describe('Image Utils', () => {
     });
 
     test('should handle metadata errors', async () => {
-      jest.mocked(sharp).mockImplementationOnce(() => ({
+      const mockSharp = sharp as jest.MockedFunction<typeof sharp>;
+      const mockInstance = {
         metadata: jest.fn().mockRejectedValue(new Error('Metadata error')),
         resize: jest.fn(),
         toBuffer: jest.fn()
-      }));
+      };
+      mockSharp.mockImplementationOnce(() => mockInstance as any);
 
       const buffer = Buffer.alloc(1000000);
       const result = await processImageBuffer(buffer, 'test.jpg');
@@ -103,12 +107,14 @@ describe('Image Utils', () => {
       expect(logger.error).toHaveBeenCalled();
     });
 
-    test('should handle resize errors', async () => {
-      jest.mocked(sharp).mockImplementationOnce(() => ({
-        metadata: jest.fn().mockResolvedValue({ width: 1920, height: 1080 }),
+    test('should handle image metadata errors', async () => {
+      const mockSharp = sharp as jest.MockedFunction<typeof sharp>;
+      const mockInstance = {
+        metadata: jest.fn().mockResolvedValue({ width: undefined, height: undefined }),
         resize: jest.fn().mockReturnThis(),
         toBuffer: jest.fn().mockRejectedValue(new Error('Resize error'))
-      }));
+      };
+      mockSharp.mockImplementationOnce(() => mockInstance as any);
 
       const buffer = Buffer.alloc(1000000);
       const result = await processImageBuffer(buffer, 'test.jpg');

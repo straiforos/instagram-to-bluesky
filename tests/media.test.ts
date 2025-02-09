@@ -24,7 +24,9 @@ jest.mock("../src/video", () => ({
   validateVideo: jest.fn().mockReturnValue(true),
   getVideoDimensions: jest.fn().mockResolvedValue({ width: 640, height: 480 }),
   getVideoMimeType: jest.fn(),
-  isVideoMimeType: jest.fn()
+  isVideoMimeType: jest.fn().mockImplementation(mimeType => 
+    mimeType === 'video/mp4' || mimeType === 'video/quicktime'
+  )
 }));
 
 // Add mocks for image and video mime type handlers

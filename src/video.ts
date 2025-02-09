@@ -5,6 +5,9 @@ import { logger } from './logger'
 // Configure ffmpeg to use ffprobe
 ffmpeg.setFfprobePath(ffprobe.path);
 
+/**
+ * Checks if the given mime type is a video type
+ */
 export function isVideoMimeType(mimeType: string): boolean {
   return mimeType.startsWith('video/');
 }
