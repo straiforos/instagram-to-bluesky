@@ -1,6 +1,7 @@
 import { getMimeType, processMedia, processPost } from "../src/media";
 import { getImageMimeType } from "../src/image";
 import { getVideoMimeType } from "../src/video";
+import { VideoEmbedImpl, ImageEmbedImpl } from "../src/bluesky";
 import path from "path";
 import fs from "fs";
 
@@ -108,6 +109,22 @@ describe("Media Processing", () => {
       expect(result.mediaText).toContain("geo:45.5,-122.5");
     });
 
+    test("should process image media file correctly", async () => {
+      const imageMedia = {
+        ...testMedia,
+        uri: "test.jpg"
+      };
+
+      const result = await processMedia(
+        imageMedia,
+        path.join(__dirname, "../transfer/test_images")
+      );
+
+      expect(result.mimeType).toBe("image/jpeg");
+      expect(result.isVideo).toBe(false);
+      expect(result.mediaBuffer).toBeTruthy();
+    });
+
     test("should handle missing media file", async () => {
       (fs.readFileSync as jest.Mock).mockImplementation(() => {
         throw new Error("File not found");
@@ -124,28 +141,50 @@ describe("Media Processing", () => {
   });
 
   describe("processPost", () => {
-    const testPost = {
-      creation_timestamp: Date.now() / 1000,
-      title: "Test Post",
-      media: [
-        {
-          uri: "test.mp4",
+    test("should handle post with video media", async () => {
+      const videoPost = {
+        creation_timestamp: Date.now() / 1000,
+        title: "Test Video Post",
+        media: [{
+          type: "Video",
           creation_timestamp: Date.now() / 1000,
-          title: "Test Media",
-        },
-      ],
-    };
+          uri: "test.mp4",
+          title: "Test Video"
+        }]
+      };
 
-    test("should process post correctly", async () => {
       const result = await processPost(
-        testPost,
+        videoPost,
         path.join(__dirname, "../transfer/test_videos")
       );
 
       expect(result.postDate).toBeTruthy();
-      expect(result.postText).toBe("Test Post");
-      // Video media should only be a single embedded object.
-      expect(Array.isArray(result.embeddedMedia)).toBe(false);
+      expect(result.postText).toBe("Test Video Post");
+      expect(result.embeddedMedia).toBeInstanceOf(VideoEmbedImpl);
+      expect(result.mediaCount).toBe(1);
+    });
+
+    test("should handle post with image media", async () => {
+      const imagePost = {
+        creation_timestamp: Date.now() / 1000,
+        title: "Test Image Post",
+        media: [{
+          type: "Photo",
+          creation_timestamp: Date.now() / 1000,
+          uri: "test.jpg",
+          title: "Test Image"
+        }]
+      };
+
+      const result = await processPost(
+        imagePost,
+        path.join(__dirname, "../transfer/test_images")
+      );
+
+      expect(result.postDate).toBeTruthy();
+      expect(result.postText).toBe("Test Image Post");
+      expect(Array.isArray(result.embeddedMedia)).toBe(true);
+      expect(result.embeddedMedia[0]).toBeInstanceOf(ImageEmbedImpl);
       expect(result.mediaCount).toBe(1);
     });
 
