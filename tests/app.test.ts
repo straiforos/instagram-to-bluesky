@@ -1,9 +1,11 @@
+import { BlobRef } from '@atproto/api';
+import fs from 'fs';
+
 import { main, formatDuration, calculateEstimatedTime } from '../src/app';
-import { BlueskyClient } from '../src/bluesky';
+import { BlueskyClient, VideoEmbedImpl } from '../src/bluesky';
 import { processPost } from '../src/media';
 import { logger } from '../src/logger';
-import fs from 'fs';
-import { createVideoEmbed } from '../src/video';
+import { createVideoEmbed, prepareVideoUpload } from '../src/video';
 
 // Mock all dependencies
 jest.mock('fs');
@@ -220,7 +222,7 @@ describe('Main App', () => {
     );
   });
 
-  xtest('should handle video posts correctly', async () => {
+  test('should handle video posts correctly', async () => {
     const mockVideoPost = {
       creation_timestamp: Date.now() / 1000,
       title: 'Test Video Post',
@@ -228,30 +230,37 @@ describe('Main App', () => {
         type: 'Video',
         creation_timestamp: Date.now() / 1000,
         media_url: 'test.mp4',
-        video_buffer: Buffer.from('test')
+        buffer: Buffer.from('test')
       }]
     };
 
     (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify([mockVideoPost]));
     
-    // Mock BlueskyClient uploadVideo method
+    // Mock video preparation and upload
+    (prepareVideoUpload as jest.Mock).mockResolvedValueOnce({
+      ref: 'test-ref',
+      mimeType: 'video/mp4',
+      size: 1000,
+      dimensions: { width: 640, height: 480 }
+    });
+    
     jest.mocked(BlueskyClient).prototype.uploadVideo = jest.fn().mockResolvedValue({
       ref: { $link: 'test-ref' }
     });
 
-    // Mock the video embed result
-    const mockVideoEmbed = {
-      $type: 'app.bsky.embed.video',
-      video: {
-        $type: 'blob',
-        ref: { $link: 'test-ref' },
+    const videoEmbed = new VideoEmbedImpl(
+      'Test Video Post',
+      Buffer.from('test'),
+      'video/mp4',
+      1000,
+      {
+        ref: { $type: 'blob', ref: 'test-ref' } as unknown as BlobRef,
         mimeType: 'video/mp4',
         size: 1000
-      },
-      aspectRatio: { width: 640, height: 480 }
-    };
+      }
+    );
 
-    (createVideoEmbed as jest.Mock).mockReturnValue(mockVideoEmbed);
+    (createVideoEmbed as jest.Mock).mockReturnValue(videoEmbed);
 
     await main();
 
@@ -259,9 +268,7 @@ describe('Main App', () => {
     expect(BlueskyClient.prototype.createPost).toHaveBeenCalledWith(
       expect.any(Date),
       expect.any(String),
-      expect.objectContaining({
-        $type: 'app.bsky.embed.video'
-      })
+      videoEmbed
     );
   });
 });
