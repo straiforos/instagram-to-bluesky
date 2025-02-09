@@ -10,6 +10,7 @@ import {
 } from "./bluesky";
 import { logger } from "./logger";
 import { validateVideo } from "./video";
+import { processImageBuffer } from "./image";
 
 export interface MediaProcessResult {
   mediaText: string;
@@ -74,75 +75,8 @@ export async function processMedia(
 
   /** start spadged's work */
   if (mediaBuffer.length > API_LIMIT_IMAGE_UPLOAD_SIZE && mimeType != "") {
-    logger.warn({
-      message: `Image size (${byteSize(
-        mediaBuffer.length
-      )}) is larger than upload limit (${byteSize(
-        API_LIMIT_IMAGE_UPLOAD_SIZE
-      )}). Will attempt to resize buffer ${mediaFilename}`,
-    });
-
-    const sharpImage = sharp(mediaBuffer);
-
-    const imageMeta = await sharpImage.metadata();
-
-    const IMAGE_LENGTH_LIMIT = 1920;
-
-    if (imageMeta.width && imageMeta.height) {
-      let width: number | undefined =
-        imageMeta.width > imageMeta.height ? IMAGE_LENGTH_LIMIT : undefined;
-      const height: number | undefined =
-        imageMeta.height > imageMeta.width ? IMAGE_LENGTH_LIMIT : undefined;
-
-      // both will be undefined if the image is square, so set the width.
-      if (!width && !height) {
-        width = IMAGE_LENGTH_LIMIT;
-      }
-
-      const bufferResized = await sharp(mediaBuffer)
-        .resize({ width: width, height: height, withoutEnlargement: true })
-        .toBuffer();
-
-      const metaResized = await sharp(bufferResized).metadata();
-
-      logger.info({
-        message: `before: w${imageMeta.width} h${imageMeta.height} | after: w${metaResized.width} h${metaResized.height}`,
-      });
-
-      if (bufferResized.length > API_LIMIT_IMAGE_UPLOAD_SIZE) {
-        logger.error({
-          message: `Resized image size (${byteSize(
-            bufferResized.length
-          )}) is larger than image upload limit (${byteSize(
-            API_LIMIT_IMAGE_UPLOAD_SIZE
-          )})`,
-        });
-        return {
-          mediaText: "",
-          mimeType: null,
-          mediaBuffer: null,
-          isVideo: false,
-        };
-      } else {
-        logger.info({
-          message: `Image successfully resized (${byteSize(
-            bufferResized.length
-          )}) to be less than upload limit (${byteSize(
-            API_LIMIT_IMAGE_UPLOAD_SIZE
-          )}). This does not change the original image on disk.`,
-        });
-
-        mediaBuffer = bufferResized;
-      }
-    } else {
-      logger.error({
-        message: `Image width or height meta data is missing, image buffer cannot be resized. Image size (${byteSize(
-          mediaBuffer.length
-        )} is larger than upload limit (${byteSize(
-          API_LIMIT_IMAGE_UPLOAD_SIZE
-        )}))`,
-      });
-
+    const processedBuffer = await processImageBuffer(mediaBuffer, mediaFilename);
+    if (!processedBuffer) {
       return {
         mediaText: "",
         mimeType: null,
@@ -150,6 +84,7 @@ export async function processMedia(
         isVideo: false,
       };
     }
+    mediaBuffer = processedBuffer;
   }
   /** end spadged's work */
 
