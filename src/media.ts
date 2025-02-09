@@ -1,6 +1,4 @@
 import FS from "fs";
-import byteSize from "byte-size";
-import sharp from "sharp";
 
 import {
   ImageEmbed,
@@ -9,8 +7,12 @@ import {
   VideoEmbedImpl,
 } from "./bluesky";
 import { logger } from "./logger";
-import { validateVideo } from "./video";
-import { processImageBuffer } from "./image";
+import { validateVideo, getVideoMimeType, isVideoMimeType } from "./video";
+import { 
+  processImageBuffer, 
+  getImageMimeType, 
+  isImageTooLarge 
+} from "./image";
 
 export interface MediaProcessResult {
   mediaText: string;
@@ -29,28 +31,16 @@ export interface ProcessedPost {
 const MAX_IMAGES_PER_POST = 4;
 const POST_TEXT_LIMIT = 300;
 const POST_TEXT_TRUNCATE_SUFFIX = "...";
-/**
- * Image lexicon maxSize 1mb
- * @link https://github.com/bluesky-social/atproto/blob/f90eedc865136f50a9daee72c52b275d26310aa3/lexicons/app/bsky/embed/images.json#L24
- */
-const API_LIMIT_IMAGE_UPLOAD_SIZE = 976000;
 
 export function getMimeType(fileType: string): string {
-  switch (fileType.toLowerCase()) {
-    case "heic":
-      return "image/heic";
-    case "webp":
-      return "image/webp";
-    case "jpg":
-      return "image/jpeg";
-    case "mp4":
-      return "video/mp4";
-    case "mov":
-      return "video/quicktime";
-    default:
-      logger.warn("Unsupported file type " + fileType);
-      return "";
-  }
+  const imageMimeType = getImageMimeType(fileType);
+  if (imageMimeType) return imageMimeType;
+  
+  const videoMimeType = getVideoMimeType(fileType);
+  if (videoMimeType) return videoMimeType;
+  
+  logger.warn("Unsupported file type " + fileType);
+  return "";
 }
 
 export async function processMedia(
@@ -74,7 +64,7 @@ export async function processMedia(
   }
 
   /** start spadged's work */
-  if (mediaBuffer.length > API_LIMIT_IMAGE_UPLOAD_SIZE && mimeType != "") {
+  if (isImageTooLarge(mediaBuffer) && mimeType != "") {
     const processedBuffer = await processImageBuffer(mediaBuffer, mediaFilename);
     if (!processedBuffer) {
       return {
@@ -99,7 +89,7 @@ export async function processMedia(
   const truncatedText =
     mediaText.length > 100 ? mediaText.substring(0, 100) + "..." : mediaText;
 
-  const isVideo = mimeType.startsWith("video/");
+  const isVideo = isVideoMimeType(mimeType);
 
   logger.debug({
     message: "Instagram Source Media",
@@ -181,7 +171,7 @@ export async function processPost(
 
     if (!mimeType || !mediaBuffer || isVideo) continue;
 
-    (embeddedMedia as ImageEmbed[]).push(
+    embeddedMedia.push(
       new ImageEmbedImpl(mediaText, mediaBuffer, mimeType)
     );
     mediaCount++;

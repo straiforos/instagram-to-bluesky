@@ -1,6 +1,7 @@
 import { validateVideo, getVideoDimensions } from '../src/video';
 import fs from 'fs';
 import path from 'path';
+import { isVideoMimeType, getVideoMimeType } from '../src/video';
 
 describe('Video Processing', () => {
   describe('validateVideo', () => {
@@ -22,6 +23,39 @@ describe('Video Processing', () => {
       expect(dimensions).toEqual({
         width: 640,
         height: 640
+      });
+    });
+  });
+
+  describe('Video Utils', () => {
+    describe('isVideoMimeType', () => {
+      test('should return true for video mime types', () => {
+        expect(isVideoMimeType('video/mp4')).toBe(true);
+        expect(isVideoMimeType('video/quicktime')).toBe(true);
+      });
+
+      test('should return false for non-video mime types', () => {
+        expect(isVideoMimeType('image/jpeg')).toBe(false);
+        expect(isVideoMimeType('application/json')).toBe(false);
+        expect(isVideoMimeType('')).toBe(false);
+      });
+    });
+
+    describe('getVideoMimeType', () => {
+      test('should return correct mime type for supported video formats', () => {
+        expect(getVideoMimeType('mp4')).toBe('video/mp4');
+        expect(getVideoMimeType('mov')).toBe('video/quicktime');
+      });
+
+      test('should handle case-insensitive file extensions', () => {
+        expect(getVideoMimeType('MP4')).toBe('video/mp4');
+        expect(getVideoMimeType('MOV')).toBe('video/quicktime');
+      });
+
+      test('should return empty string for unsupported formats', () => {
+        expect(getVideoMimeType('avi')).toBe('');
+        expect(getVideoMimeType('wmv')).toBe('');
+        expect(getVideoMimeType('')).toBe('');
       });
     });
   });

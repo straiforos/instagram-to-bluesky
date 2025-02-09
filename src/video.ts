@@ -5,6 +5,21 @@ import { logger } from './logger'
 // Configure ffmpeg to use ffprobe
 ffmpeg.setFfprobePath(ffprobe.path);
 
+export function isVideoMimeType(mimeType: string): boolean {
+  return mimeType.startsWith('video/');
+}
+
+export function getVideoMimeType(fileType: string): string {
+  switch (fileType.toLowerCase()) {
+    case "mp4":
+      return "video/mp4";
+    case "mov":
+      return "video/quicktime";
+    default:
+      return "";
+  }
+}
+
 /**
  * Validates video size is not greater than Blueskys max.
  * @returns boolean

@@ -1,4 +1,6 @@
 import { getMimeType, processMedia, processPost } from "../src/media";
+import { getImageMimeType } from "../src/image";
+import { getVideoMimeType } from "../src/video";
 import path from "path";
 import fs from "fs";
 
@@ -21,6 +23,15 @@ jest.mock("../src/logger", () => ({
 jest.mock("../src/video", () => ({
   validateVideo: jest.fn().mockReturnValue(true),
   getVideoDimensions: jest.fn().mockResolvedValue({ width: 640, height: 480 }),
+  getVideoMimeType: jest.fn(),
+  isVideoMimeType: jest.fn()
+}));
+
+// Add mocks for image and video mime type handlers
+jest.mock("../src/image", () => ({
+  getImageMimeType: jest.fn(),
+  processImageBuffer: jest.fn(),
+  isImageTooLarge: jest.fn()
 }));
 
 describe("Media Processing", () => {
@@ -29,17 +40,39 @@ describe("Media Processing", () => {
     jest.clearAllMocks();
     // Setup default mock for readFileSync
     (fs.readFileSync as jest.Mock).mockReturnValue(Buffer.from("test"));
+    (getImageMimeType as jest.Mock).mockImplementation((type) => {
+      if (type.toLowerCase() === 'jpg') return 'image/jpeg';
+      return '';
+    });
+    (getVideoMimeType as jest.Mock).mockImplementation((type) => {
+      if (type.toLowerCase() === 'mp4') return 'video/mp4';
+      return '';
+    });
   });
 
   describe("getMimeType", () => {
-    test("should return correct mime types for supported files", () => {
-      expect(getMimeType("jpg")).toBe("image/jpeg");
-      expect(getMimeType("mp4")).toBe("video/mp4");
-      expect(getMimeType("mov")).toBe("video/quicktime");
+    test("should try image mime type handler first", () => {
+      getMimeType("jpg");
+      expect(getImageMimeType).toHaveBeenCalledWith("jpg");
+      expect(getVideoMimeType).not.toHaveBeenCalled();
     });
 
-    test("should return empty string for unsupported files", () => {
-      expect(getMimeType("xyz")).toBe("");
+    test("should try video mime type handler if image returns empty", () => {
+      getMimeType("mp4");
+      expect(getImageMimeType).toHaveBeenCalledWith("mp4");
+      expect(getVideoMimeType).toHaveBeenCalledWith("mp4");
+    });
+
+    test("should handle case-insensitive extensions", () => {
+      getMimeType("JPG");
+      expect(getImageMimeType).toHaveBeenCalledWith("JPG");
+    });
+
+    test("should return empty string when neither handler recognizes the type", () => {
+      const result = getMimeType("xyz");
+      expect(getImageMimeType).toHaveBeenCalledWith("xyz");
+      expect(getVideoMimeType).toHaveBeenCalledWith("xyz");
+      expect(result).toBe("");
     });
   });
 

@@ -9,12 +9,39 @@ import { logger } from "./logger";
 export const API_LIMIT_IMAGE_UPLOAD_SIZE = 976000;
 const IMAGE_LENGTH_LIMIT = 1920;
 
+export function isImageMimeType(mimeType: string): boolean {
+  return mimeType.startsWith('image/');
+}
+
+export function getImageMimeType(fileType: string): string {
+  switch (fileType.toLowerCase()) {
+    case "heic":
+      return "image/heic";
+    case "webp":
+      return "image/webp";
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "png":
+      return "image/png";
+    default:
+      return "";
+  }
+}
+
+/**
+ * Checks if the buffer size exceeds Bluesky's upload limit
+ */
+export function isImageTooLarge(buffer: Buffer): boolean {
+  return buffer.length > API_LIMIT_IMAGE_UPLOAD_SIZE;
+}
+
 /**
  * Validates and resizes image if needed to meet Bluesky's upload requirements
  * @returns Buffer | null
  */
 export async function processImageBuffer(mediaBuffer: Buffer, filename: string): Promise<Buffer | null> {
-  if (mediaBuffer.length <= API_LIMIT_IMAGE_UPLOAD_SIZE) {
+  if (!isImageTooLarge(mediaBuffer)) {
     return mediaBuffer;
   }
 
