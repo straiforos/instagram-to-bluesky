@@ -1,5 +1,8 @@
 {
-  "name": "instagramtobluesky",
+  "name": "@straiforos/instagramtobluesky",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
   "version": "0.7.5",
   "description": "Import Instagram archive to a Bluesky account",
   "main": "dist/index.js",
