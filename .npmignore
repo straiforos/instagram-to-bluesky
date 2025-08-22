@@ -1,0 +1,23 @@
+# Ignore source files and tests
+src/
+test/
+*.ts
+*.tsx
+*.test.js
+*.test.ts
+*.map
+
+# Ignore config files
+jest.config.js
+jest.config.ts
+tsconfig*.json
+.eslintrc*
+eslint.config.*
+
+# Ignore other files not needed in package
+.vscode/
+.git/
+.gitignore
+node_modules/
+coverage/
+logo.jpg

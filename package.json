@@ -2,7 +2,13 @@
   "name": "instagramtobluesky",
   "version": "0.7.5",
   "description": "Import Instagram archive to a Bluesky account",
-  "main": "main.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE.txt"
+  ],
   "engines": {
     "node": ">=20.12.0"
   },
